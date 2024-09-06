@@ -67,7 +67,7 @@ def calculate_snr(waveform,axis=-1):
 
 def calculate_rms_noise(waveform):
     '''Calculate the short and long rms noise for a given unit waveform.'''
-    srms = np.mean([np.sqrt(sum([(x)**2 for i,x in enumerate(chan) if 0<=i<=15])/len(chan)) for chan in waveform])
+    srms = np.mean([np.sqrt(sum([(x)**2 for i,x in enumerate(chan) if 0<=i<=15])/len(15)) for chan in waveform])
     lrms = np.mean([np.sqrt(sum([(x)**2 for x in chan])/len(chan)) for chan in waveform])
 
     return srms,lrms
