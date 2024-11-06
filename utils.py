@@ -101,3 +101,16 @@ def process_waveforms(waveform_arr, settings_path, probe_label='ProbeA', probe_t
             corrected_waveforms[i] = cm_wf
 
     return corrected_waveforms
+
+def save_figure(fig, fname, formats = ['.pdf'],transparent=False,dpi=300,facecolor=None,**kwargs):
+    import matplotlib as mpl
+    mpl.rcParams['pdf.fonttype'] = 42
+
+    if 'size' in kwargs.keys():
+        fig.set_size_inches(kwargs['size'])
+
+    elif 'figsize' in kwargs.keys():
+        fig.set_size_inches(kwargs['figsize'])
+    # else:#     fig.set_size_inches(11,8.5)
+    for f in formats:
+        fig.savefig(fname + f, transparent = transparent,dpi=dpi)

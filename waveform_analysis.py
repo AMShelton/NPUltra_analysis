@@ -97,3 +97,116 @@ def calculate_spike_corr(waveform):
     mean_correlation = np.mean(upper_triangle_correlations)
     
     return correlations, mean_correlation
+
+def downsample_npultra(unit,probe_type='1.0'):
+    '''
+    Given a unit array of shape (n_chan,t) in the NP Ultra, perform regular grid interpolation to find the multi-channel waveform with a NP 1.0 or NP 2.0 configuration.
+
+    unit = 2d array of NP Ultra unit electrophysiological mean waveform of shape (n_chan,t).
+    probe_type = string, determines points for interpolation to NP 1.0 or NP 2.0 configuration.
+    '''
+    from scipy.interpolate import RegularGridInterpolator as rgi
+    
+    ultra_data = unit.reshape(48,8,unit.shape[1])
+
+    x = np.arange(ultra_data.shape[0])
+    y = np.arange(ultra_data.shape[1])
+    z = np.arange(ultra_data.shape[2])
+
+    func = rgi((x,y,z), ultra_data,method='linear')
+
+    if probe_type=='1.0':
+        
+        cols_coords = [0.5,2.5,4.5,6.5]
+        row_coords = np.arange(0.5,48,4)
+
+        X,Y = np.meshgrid(cols_coords,row_coords)
+
+        X1 = X[::2,::2]
+        X2 = X[::2,1::2]
+        Y1 = Y[::2,:2]
+        Y2 = Y[1::2,:2]
+
+        col1_coords = np.column_stack([Y1[:,0],X1[:,0]])
+        col2_coords = np.column_stack([Y2[:,0],X2[:,0]])
+        col3_coords = np.column_stack([Y1[:,1],X1[:,1]])
+        col4_coords = np.column_stack([Y2[:,1],X2[:,1]])
+
+        points = []
+
+        for i,p in enumerate(col1_coords):
+            points.append(tuple(p))
+            points.append(tuple(col3_coords[i]))
+            points.append(tuple(col2_coords[i]))
+            points.append(tuple(col4_coords[i]))
+
+        V = np.asarray([[func([p[0],p[1],i])[0] for i in np.arange(0,82)] for p in points])
+
+    if probe_type=='2.0':
+        cols_coords = [1,5.0]
+        row_coords = np.arange(1,48,3.5)
+
+
+        X,Y = np.meshgrid(cols_coords,row_coords)
+
+        X1 = X[:,0]
+        X2 = X[:,1]
+        Y1 = Y[:,0]
+        Y2 = Y[:,1]
+
+        col1_coords = np.column_stack([Y1,X1])
+        col2_coords = np.column_stack([Y2,X2])
+
+        points = []
+
+        for i,p in enumerate(col1_coords):
+            points.append(tuple(p))
+            points.append(tuple(col2_coords[i]))
+
+        V = []
+
+        for p in points:
+            vals = []
+
+            for i in np.arange(0,82):
+                wf = ([p[0],p[1],i])
+
+                vals.append(func(wf)[0])
+            V.append(vals)
+    return V
+
+def get_single_chan_features(unit):
+    '''Given a 2D array of waveforms of shape n samples x time, return 1D arrays of values of shape n samples.'''
+    from scipy.stats import linregress
+    trough_idx = np.where(unit==np.min(unit))[0][0]
+    # try:
+    #     peak_idx = find_peaks(unit[trough_idx:])[0][0]+trough_idx
+    #     prepeak_idx = np.where(unit[:trough_idx]==np.max(unit[:trough_idx]))[0][0]
+    # except:
+    peak_idx = np.where(unit[trough_idx:]==np.max(unit[trough_idx:]))[0][0]+trough_idx
+    trough_h = unit[trough_idx]
+    peak_h = unit[peak_idx]
+    amp = (peak_h+abs(trough_h))
+    try:
+        prepeak_idx = np.where(unit[:trough_idx]==np.max(unit[:trough_idx]))[0][0]
+        prepeak_h = unit[prepeak_idx]
+        prePTR = prepeak_h/abs(trough_h)
+    except:
+        prepeak_h = 1
+        prePTR = prepeak_h/abs(trough_h)
+        
+    dur = (peak_idx-trough_idx)/30
+    
+    PTR = peak_h/abs(trough_h)
+    
+    try:
+        repol_slope = linregress(np.linspace(trough_idx,trough_idx+5,5),unit[trough_idx:trough_idx+5])[0]*(30)
+    except:
+        repol_slope = 0
+
+    try:
+        recov_slope = linregress(np.linspace(peak_idx,peak_idx+5,5),unit[peak_idx:peak_idx+5])[0]*(30)
+    except:
+        recov_slope = 0
+    
+    return amp,dur,PTR,prePTR,repol_slope,recov_slope
