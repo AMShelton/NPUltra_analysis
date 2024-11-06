@@ -1,14 +1,10 @@
-import os
-import pickle
-from webbrowser import get
+
 import numpy as np
-import pandas as pd
 import seaborn as sns
-import scipy.stats as ss
-# from ams_utilities import *
-import npultra_utils as npu
+from waveform_analysis import get_amps
+from get_footprint import find_intercept
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+from scipy.stats import norm
 
 sns.set_style('white')
 params = {'legend.fontsize': 'x-large',
@@ -34,9 +30,6 @@ def make_contour_plot(amps,ax,interp_scale=10,shape=(48,8),levels=10,vmin=0.0,vm
     X, Y = np.meshgrid(xnew, ynew)
     Z = func(xnew,ynew)
 
-    # for spine in ['right','left','top','bottom']:
-    #     ax.spines[spine].set_visible(False)
-
     CS = ax.contourf(X,Y,Z,
                      vmin= vmin,vmax=vmax,
                      levels = levels,
@@ -47,7 +40,7 @@ def make_contour_plot(amps,ax,interp_scale=10,shape=(48,8),levels=10,vmin=0.0,vm
     ax.set_xticklabels([])
 
 def make_st_plot(unit,ax,shape=(48,8),vmin=-100,vmax=100,cbar=False):
-    amps = get_amp(unit)
+    amps = get_amps(unit)
     max_chan = np.argmax(amps)
     min_idx = np.where(unit[max_chan,:]==np.min(unit[max_chan,:]))[0][0]
 
@@ -105,7 +98,7 @@ def make_waveform_plot(unit,figsize=(4,6),fontsizes=(12,8),ylim=(-200,100)):
         unit = unit.T
     min_idx = np.where(unit==np.min(unit))[1][0]
 
-    amps = get_amp(unit)
+    amps = get_amps(unit)
     max_chan = np.argmax(amps)
     make_contour_plot(amps,ax1,
                       interp_scale=10,
@@ -139,7 +132,7 @@ def make_waveform_plot(unit,figsize=(4,6),fontsizes=(12,8),ylim=(-200,100)):
 
 def interpolate_line(row,col,ang,Z):
     import scipy
-    x,y = npu.find_intercept((row,col),(0,7),(0,47),ang)
+    x,y = find_intercept((row,col),(0,7),(0,47),ang)
     num =int(np.sqrt((x-row)**2 + (y-col)**2)*6)
     c,d = np.linspace(row, x, int(num)), np.linspace(col, y, int(num))
 
@@ -155,8 +148,7 @@ def make_directional_plot(unit,df):
 
     sns.despine(ax=ax2)
 
-    amps = get_amp(unit).reshape(48,8)
-    # amps = amps-np.mean(np.sort(amps.reshape(384,))[:10])
+    amps = get_amps(unit).reshape(48,8)
     ax1.set_xticks([])
     ax1.set_yticks([])
 
@@ -210,8 +202,6 @@ def make_directional_plot(unit,df):
     ax2.axhline(30,color='r',dashes=[3,3],zorder=0)
     ax2.set_xlim(0,100)
     ax2.legend(frameon=False,fontsize=12)
-    # ax2.set_yticklabels([0.0,50,100,150])
-    # fig.tight_layout()
     fig.subplots_adjust(bottom=0.2)
 
     return fig
@@ -280,11 +270,11 @@ def normalize(array):
     return norm
 
 def get_trajectory(unit,pitch=6,shape=(48,8),threshold=0.05):
-    amps = get_amp(unit)
+    amps = get_amps(unit)
     max_chan = np.argmax(amps)
     row,col = max_chan//shape[1],max_chan%shape[1]
     column = [chan for i,chan in enumerate(unit) if i%shape[1]==col]
-    col_amps = get_amp(column)
+    col_amps = get_amps(column)
     trajectory = []
 
     for ii,chan in enumerate(column):
@@ -311,13 +301,13 @@ def make_ladder_plot(unit, probe_type='alpha', probe_shape=(48,8), figsize=(1.5,
     trajectory = []
 
     if probe_type == 'alpha':
-        amps = get_amp(unit)
+        amps = get_amps(unit)
         max_chan = np.argmax(amps)
         row, col = max_chan // probe_shape[1], max_chan % probe_shape[1]
         column = [chan for i, chan in enumerate(unit) if i % probe_shape[1] == col]
         
         for ii, chan in enumerate(column):
-            col_amps = get_amp(column)
+            col_amps = get_amps(column)
             if plot:
                 ax.plot(chan + ii * 6, color='k', lw=lw[0])
                 if ii == np.argmax(col_amps):
@@ -335,7 +325,7 @@ def make_ladder_plot(unit, probe_type='alpha', probe_shape=(48,8), figsize=(1.5,
             ax.plot(trajectory[:, 1], trajectory[:, 2], color='r', lw=lw[1])
         
     if probe_type == 'beta':
-        amps = get_amp(unit[::])
+        amps = get_amps(unit[::])
         max_chan = np.argmax(amps)
         for ii, chan in enumerate(unit[::]):
             if plot:
@@ -367,7 +357,7 @@ def plot_waveform_on_probe(unit, shape=(48,8),figsize=(4,24)):
     else:
         unit = unit.T
 
-    amps = get_amp(unit)
+    amps = get_amps(unit)
     peak_idx = [np.where(abs(chan)==np.max(abs(chan)))[0][0] for chan in unit]
     peaks = np.array([chan[peak_idx[i]] for i,chan in enumerate(unit)]).reshape(shape)
     min,max = np.min(unit),np.max(unit)
@@ -378,8 +368,6 @@ def plot_waveform_on_probe(unit, shape=(48,8),figsize=(4,24)):
     sns.despine(ax=ax2,left=True,bottom=True)
     
     make_contour_plot(peaks,ax=ax2,interp_scale=1,shape=(48,8),levels=100,vmin=-500,vmax=500,cmap='seismic_r')
-
-    # sns.heatmap(amps.reshape(48,8),ax=ax2,cbar=False,cmap='seismic_r')
 
     ax2.set_zorder(0)
     ax2.invert_yaxis()
@@ -394,7 +382,6 @@ def plot_waveform_on_probe(unit, shape=(48,8),figsize=(4,24)):
         axis.patch.set_alpha(0.0)
         axis.set_zorder(10)
 
-    # ax2.set_facecolor("none")
     plt.margins(0.0)
     fig.tight_layout()
     fig.subplots_adjust(wspace=0.1,hspace=0.0,left=0.0,right=1.0,bottom=0.0,top=1.0)
@@ -406,7 +393,7 @@ def get_CI(data,ci=0.95,axis=0):
 
     '''Take data in the form of a pandas dataframe or ndnumpy array and calculates the upper and lower bounds of a confidence interval along a declared axis'''
 
-    from scipy.stats import norm
+    
     z = norm.ppf((1 + ci) / 2)
     mean = np.nanmean(data,axis=axis)
     se = [z*((np.nanstd(data.loc[idx],ddof=1)/np.sqrt(len(data)))) for idx,row in enumerate(data.iterrows())]

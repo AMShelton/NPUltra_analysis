@@ -1,7 +1,6 @@
-import os 
 import numpy as np
-import pandas as pd
 from scipy.signal import find_peaks
+from scipy.stats import linregress
 
 def get_amps(unit):
     '''Calculate the largest amplitude signal from trough to peak for each channel.'''
@@ -177,12 +176,8 @@ def downsample_npultra(unit,probe_type='1.0'):
 
 def get_single_chan_features(unit):
     '''Given a 2D array of waveforms of shape n samples x time, return 1D arrays of values of shape n samples.'''
-    from scipy.stats import linregress
+    
     trough_idx = np.where(unit==np.min(unit))[0][0]
-    # try:
-    #     peak_idx = find_peaks(unit[trough_idx:])[0][0]+trough_idx
-    #     prepeak_idx = np.where(unit[:trough_idx]==np.max(unit[:trough_idx]))[0][0]
-    # except:
     peak_idx = np.where(unit[trough_idx:]==np.max(unit[trough_idx:]))[0][0]+trough_idx
     trough_h = unit[trough_idx]
     peak_h = unit[peak_idx]

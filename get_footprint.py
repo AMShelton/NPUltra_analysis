@@ -1,23 +1,6 @@
-from statistics import mean
+from waveform_analysis import get_amps
 import numpy as np
 import scipy
-
-def get_amps(unit):
-    '''Given a 2d array, find the largest amplitude signal from trough to peak for each array element in axis = 0.
-    
-    unit = mean waveform data of shape 384 x 82'''
-    amps = []
-    
-    for chan in unit:
-        trough_idx = np.where(chan==np.min(chan))[0][0]
-        peak_idx = np.where(chan[trough_idx:]==chan[trough_idx:].max())[0][0]+trough_idx
-
-        trough_h = chan[trough_idx]
-        peak_h = chan[peak_idx]
-        amp = (peak_h+abs(trough_h))
-        amps.append(amp)
-        
-    return np.array(amps)
 
 def find_intercept(p,xlim,ylim,deg):
     '''Pretty clunky way of finding the edge intercept coordinate of a straight line from the max amplitude channel, given a desired input angle.

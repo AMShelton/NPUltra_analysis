@@ -1,11 +1,7 @@
-import os
-import glob
 import pickle
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import xml.etree.ElementTree as ET
-
 
 def load_waveform_data(filepath):
     '''Load waveform data from a numpy file.'''
@@ -111,6 +107,5 @@ def save_figure(fig, fname, formats = ['.pdf'],transparent=False,dpi=300,facecol
 
     elif 'figsize' in kwargs.keys():
         fig.set_size_inches(kwargs['figsize'])
-    # else:#     fig.set_size_inches(11,8.5)
     for f in formats:
         fig.savefig(fname + f, transparent = transparent,dpi=dpi)
