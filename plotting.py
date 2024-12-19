@@ -1,8 +1,8 @@
 
 import numpy as np
 import seaborn as sns
-from waveform_analysis import get_amps
-from get_footprint import find_intercept
+from NPUltra_analysis.waveform_analysis import get_amps
+from NPUltra_analysis.get_footprint import find_intercept
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 
@@ -289,11 +289,11 @@ def get_trajectory(unit,pitch=6,shape=(48,8),threshold=0.05):
     trajectory=np.array(trajectory)
     return trajectory
 
-def make_ladder_plot(unit, probe_type='alpha', probe_shape=(48,8), figsize=(1.5,3), traj=True, thresh=0.1, plot=True,color='r',lw=[2,3]):
+def make_ladder_plot(unit,fig,ax, probe_type='alpha', probe_shape=(48,8), figsize=(1.5,3), traj=True, thresh=0.1, plot=True,color='r',lw=[2,3]):
     
     # Initialize figure and axis if plotting is enabled
     if plot:
-        fig, ax = plt.subplots(figsize=figsize)
+        # fig, ax = plt.subplots(figsize=figsize)
         sns.despine(left=True, bottom=True)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -348,8 +348,6 @@ def make_ladder_plot(unit, probe_type='alpha', probe_shape=(48,8), figsize=(1.5,
     if plot:
         fig.tight_layout()
 
-    return trajectory,fig,ax
-
 def plot_waveform_on_probe(unit, shape=(48,8),figsize=(4,24)):
 
     if unit.shape[0]>unit.shape[1]:
@@ -392,8 +390,6 @@ def plot_waveform_on_probe(unit, shape=(48,8),figsize=(4,24)):
 def get_CI(data,ci=0.95,axis=0):
 
     '''Take data in the form of a pandas dataframe or ndnumpy array and calculates the upper and lower bounds of a confidence interval along a declared axis'''
-
-    
     z = norm.ppf((1 + ci) / 2)
     mean = np.nanmean(data,axis=axis)
     se = [z*((np.nanstd(data.loc[idx],ddof=1)/np.sqrt(len(data)))) for idx,row in enumerate(data.iterrows())]
