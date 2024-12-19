@@ -23,6 +23,16 @@ def butter_filter(data, cutoff, fs, order, btype=None):
     y = filtfilt(b, a, data)
     return y
 
+def tolerant_mean(arrs):
+
+    '''Allows for averaging across axis=1 in a 2D ragged array. Averaging does not include arrays with len < current idx'''
+
+    lens = [len(i) for i in arrs]
+    arr = np.ma.empty((np.max(lens),len(arrs)))
+    arr.mask = True
+    for idx, l in enumerate(arrs):
+        arr[:len(l),idx] = l
+    return arr.mean(axis = -1), arr.std(axis=-1)
 
 def process_waveforms(waveform_arr, settings_path, probe_label='ProbeA', probe_type='Neuropixels Ultra (Switchable)', shape=(48,8,90), site_size=6,car=True):
     '''
