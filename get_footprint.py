@@ -1,4 +1,4 @@
-from waveform_analysis import get_amps
+from NPUltra_analysis.waveform_analysis import get_amps
 import numpy as np
 import scipy
 
