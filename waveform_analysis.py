@@ -205,3 +205,86 @@ def get_single_chan_features(unit):
         recov_slope = 0
     
     return amp,dur,PTR,prePTR,repol_slope,recov_slope
+
+def compute_burstiness(spike_times,num_spikes_in_burst=3, burst_threshold_ms=4, quiescent_period_ms=10):
+    # Convert thresholds to seconds
+    burst_threshold = burst_threshold_ms / 1000.0
+    quiescent_period = quiescent_period_ms / 1000.0
+
+    # Compute interspike intervals (ISI)
+    isi = np.diff(spike_times)
+
+    # Initialize variables to track bursts and quiescent periods
+    bursts = []
+    is_in_burst = False
+    burst_spikes = []
+
+    for i in range(1, len(isi)):
+        if isi[i-1] >= quiescent_period:  # Check if the current ISI follows a quiescent period
+            # A new burst starts here
+            if len(burst_spikes) >= num_spikes_in_burst:  # Only consider the previous burst if it had 2+ spikes
+                bursts.append(burst_spikes)
+            burst_spikes = [spike_times[i]]
+            is_in_burst = True
+
+        if is_in_burst and isi[i] <= burst_threshold:  # Continue burst if ISI is short enough
+            burst_spikes.append(spike_times[i+1])
+        else:
+            if len(burst_spikes) >= num_spikes_in_burst:  # If burst ended, store it
+                bursts.append(burst_spikes)
+            is_in_burst = False  # End of burst
+
+    # Calculate number of spikes in bursts
+    spikes_in_bursts = sum([len(burst) for burst in bursts])
+
+    # Calculate burstiness index: number of bursts normalized by total spikes
+    num_bursts = len(bursts)
+    burstiness_index = num_bursts / len(spike_times) if len(spike_times) > 0 else 0
+
+    # Calculate total and average burst duration
+    burst_durations = [burst[-1] - burst[0] for burst in bursts] if bursts else []
+    avg_burst_duration = np.nanmean(burst_durations)
+    # Proportion of spikes that are part of bursts
+    proportion_spikes_in_bursts = spikes_in_bursts / len(spike_times) if len(spike_times) > 0 else 0
+
+    return bursts,burstiness_index, num_bursts, avg_burst_duration, proportion_spikes_in_bursts
+
+from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import curve_fit
+
+# New algorithm to compute backpropagation index for each unit
+
+def compute_backpropagation_index(waveform_data, smoothing_sigma=2, amplitude_threshold=0.1, num_shuffles=500):
+    # Step 1: Smooth the waveform along channels
+    smoothed_waveforms = gaussian_filter1d(waveform_data, sigma=smoothing_sigma, axis=0)
+    
+    # Step 2: Detect peak amplitude (soma channel)
+    peak_amplitudes = get_amp(smoothed_waveforms.reshape(384,90)).reshape(192,2)
+    soma_channel = np.argmax(peak_amplitudes, axis=0)  # Soma has the highest peak
+    
+    # Step 3: Measure vertical extent of backpropagation
+    extent = np.zeros(peak_amplitudes.shape[1])
+    attenuation = np.zeros(peak_amplitudes.shape[1])
+    
+    for channel in range(peak_amplitudes.shape[1]):
+        soma_peak = peak_amplitudes[soma_channel[channel], channel]
+        for ch in range(soma_channel[channel], waveform_data.shape[0]):
+            ch_peak = peak_amplitudes[ch, channel]
+            if ch_peak < soma_peak * amplitude_threshold:
+                break
+            extent[channel] += 6
+            attenuation[channel] = 1 - (ch_peak / soma_peak)
+    
+    # Step 4: Compute backpropagation degree (Extent * (1 - Attenuation))
+    backpropagation_degree = extent * (1 - attenuation)
+    
+    return extent, attenuation, backpropagation_degree
+
+def calculate_onset_latency(psth,start_idx=20,activation_theshold=3):
+    baseline_mean = np.mean(psth[:19])
+    baseline_std = np.std(psth[:19],ddof=1)
+    try:
+        onset=np.where(psth[start_idx:]>=baseline_mean+baseline_std*activation_theshold)[0][0]
+    except:
+        onset=np.nan
+    return onset
